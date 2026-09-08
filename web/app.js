@@ -42,22 +42,29 @@ function formatDoseTime(value) {
   return { time: `${String(hour).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`, period };
 }
 
+function getDoseSlots(profile) {
+  if (Array.isArray(profile?.slots) && profile.slots.length) return profile.slots;
+  return profile?.time ? [{ name: 'prescribed dose', time: profile.time, food: profile.instructions || 'as prescribed' }] : [];
+}
+
 function renderMedicationProfile() {
   const profile = getMedicationProfile();
-  const time = formatDoseTime(profile?.time);
+  const slots = getDoseSlots(profile);
+  const nextSlot = slots[0];
+  const time = formatDoseTime(nextSlot?.time);
   document.querySelector('#nextDoseTime').innerHTML = `${time.time} <span>${time.period}</span>`;
   document.querySelector('#nextMedicine').textContent = profile?.medicine || 'No medication added';
   document.querySelector('#nextDoseDetail').textContent = profile
-    ? `${profile.dose || 'Dose not specified'}${profile.instructions ? ` · ${profile.instructions}` : ''}`
+    ? `${profile.dose || 'Dose not specified'} · ${nextSlot.food}`
     : 'Add your prescription details to see your next dose.';
-  document.querySelector('#timeUntil').textContent = profile ? `Prescribed at ${time.time} ${time.period}` : 'Set your schedule';
+  document.querySelector('#timeUntil').textContent = profile ? `${slots.length} prescribed time${slots.length === 1 ? '' : 's'}` : 'Set your schedule';
   document.querySelector('#reminderText').textContent = profile
-    ? `Reminder set for ${time.time} ${time.period}`
+    ? `Reminder set for ${time.time} ${time.period} · ${nextSlot.food}`
     : 'Your prescribed schedule will appear here.';
   const list = document.querySelector('#medicationList');
   if (!list) return;
   list.innerHTML = profile
-    ? `<article class="med-row current"><div class="med-time"><strong>${time.time}</strong><span>${time.period}</span></div><div class="med-pill blue"></div><div class="med-info"><h3>${profile.medicine}</h3><p>${profile.dose || 'Dose not specified'}${profile.instructions ? ` · ${profile.instructions}` : ''}</p></div><button class="scan-button" id="scanBtn">Scan tablet <span>→</span></button></article>`
+    ? slots.map((slot, index) => { const slotTime = formatDoseTime(slot.time); return `<article class="med-row ${index === 0 ? 'current' : ''}"><div class="med-time"><strong>${slotTime.time}</strong><span>${slotTime.period}</span></div><div class="med-pill blue"></div><div class="med-info"><h3>${profile.medicine}</h3><p>${profile.dose || 'Dose not specified'} · ${slot.food}${profile.days ? ` · ${profile.days} days` : ''}</p></div>${index === 0 ? '<button class="scan-button" id="scanBtn">Scan tablet <span>→</span></button>' : '<span class="state-badge upcoming">Upcoming</span>'}</article>`; }).join('')
     : '<div class="soft-card"><strong>No prescription added yet.</strong><p class="muted">Open Medication profile and enter the information from your doctor.</p></div>';
   document.querySelector('#scanBtn')?.addEventListener('click', openScan);
   renderSchedule(profile);
@@ -70,8 +77,8 @@ function renderSchedule(profile) {
     list.innerHTML = '<div class="soft-card"><strong>No schedule yet.</strong><p class="muted">Add the time from your doctor in Medication profile.</p></div>';
     return;
   }
-  const time = formatDoseTime(profile.time);
-  list.innerHTML = `<div class="day-divider"><span>Prescribed dose</span><span>${time.time} ${time.period}</span></div><div class="schedule-item next"><span class="schedule-time">${time.time} ${time.period}</span><div class="med-pill blue"></div><div><h3>${profile.medicine} <small>${profile.dose || 'Dose not specified'}${profile.instructions ? ` · ${profile.instructions}` : ''}</small></h3></div><button class="scan-button" id="scheduleScanBtn">Scan tablet <span>→</span></button></div>${profile.issue ? `<p class="muted">Health issue: ${profile.issue}</p>` : ''}`;
+  const slots = getDoseSlots(profile);
+  list.innerHTML = `<div class="day-divider"><span>${profile.medicine} · ${profile.days} days</span><span>${slots.length} dose${slots.length === 1 ? '' : 's'} daily</span></div>${slots.map((slot, index) => { const time = formatDoseTime(slot.time); return `<div class="schedule-item ${index === 0 ? 'next' : ''}"><span class="schedule-time">${time.time} ${time.period}</span><div class="med-pill blue"></div><div><h3>${profile.medicine} <small>${profile.dose || 'Dose not specified'} · ${slot.food}</small></h3></div>${index === 0 ? '<button class="scan-button" id="scheduleScanBtn">Scan tablet <span>→</span></button>' : '<span class="state-badge upcoming">Upcoming</span>'}</div>`; }).join('')}${profile.issue ? `<p class="muted">Health issue: ${profile.issue}</p>` : ''}`;
   document.querySelector('#scheduleScanBtn')?.addEventListener('click', openScan);
 }
 
@@ -80,9 +87,15 @@ function loadMedicationProfile() {
   if (!profile) return;
   document.querySelector('#profileIssue').value = profile.issue || '';
   document.querySelector('#profileMedicine').value = profile.medicine || '';
-  document.querySelector('#profileTime').value = profile.time || '';
+  document.querySelectorAll('input[name="doseSlot"]').forEach(input => { input.checked = getDoseSlots(profile).some(slot => slot.name === input.value); });
+  getDoseSlots(profile).forEach(slot => {
+    const timeInput = document.querySelector(`#${slot.name}Time`);
+    const foodInput = document.querySelector(`#${slot.name}Food`);
+    if (timeInput) timeInput.value = slot.time;
+    if (foodInput) foodInput.value = slot.food;
+  });
+  document.querySelector('#profileDays').value = profile.days || '';
   document.querySelector('#profileDose').value = profile.dose || '';
-  document.querySelector('#profileInstructions').value = profile.instructions || '';
 }
 
 renderMedicationProfile();
@@ -126,12 +139,12 @@ document.querySelector('#profileForm').addEventListener('submit', event => {
   const profile = {
     issue: document.querySelector('#profileIssue').value.trim(),
     medicine: document.querySelector('#profileMedicine').value.trim(),
-    time: document.querySelector('#profileTime').value,
+    days: document.querySelector('#profileDays').value,
     dose: document.querySelector('#profileDose').value.trim(),
-    instructions: document.querySelector('#profileInstructions').value.trim(),
+    slots: [...document.querySelectorAll('input[name="doseSlot"]:checked')].map(input => ({ name: input.value, time: document.querySelector(`#${input.value}Time`).value, food: document.querySelector(`#${input.value}Food`).value })),
   };
-  if (!profile.medicine || !profile.time) {
-    notify('Add the medicine name and prescribed time.');
+  if (!profile.medicine || !profile.days || !profile.slots.length || profile.slots.some(slot => !slot.time)) {
+    notify('Add the medicine, number of days, and at least one prescribed time.');
     return;
   }
   localStorage.setItem('pillcheck-medication-profile', JSON.stringify(profile));
