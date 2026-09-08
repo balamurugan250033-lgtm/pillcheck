@@ -26,6 +26,67 @@ function signOut() {
 const storedSession = localStorage.getItem('pillcheck-session');
 if (storedSession) authGate.classList.add('hidden');
 
+function getMedicationProfile() {
+  try {
+    return JSON.parse(localStorage.getItem('pillcheck-medication-profile') || 'null');
+  } catch {
+    return null;
+  }
+}
+
+function formatDoseTime(value) {
+  if (!value) return { time: '--:--', period: '--' };
+  const [hours, minutes] = value.split(':').map(Number);
+  const period = hours >= 12 ? 'PM' : 'AM';
+  const hour = hours % 12 || 12;
+  return { time: `${String(hour).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`, period };
+}
+
+function renderMedicationProfile() {
+  const profile = getMedicationProfile();
+  const time = formatDoseTime(profile?.time);
+  document.querySelector('#nextDoseTime').innerHTML = `${time.time} <span>${time.period}</span>`;
+  document.querySelector('#nextMedicine').textContent = profile?.medicine || 'No medication added';
+  document.querySelector('#nextDoseDetail').textContent = profile
+    ? `${profile.dose || 'Dose not specified'}${profile.instructions ? ` · ${profile.instructions}` : ''}`
+    : 'Add your prescription details to see your next dose.';
+  document.querySelector('#timeUntil').textContent = profile ? `Prescribed at ${time.time} ${time.period}` : 'Set your schedule';
+  document.querySelector('#reminderText').textContent = profile
+    ? `Reminder set for ${time.time} ${time.period}`
+    : 'Your prescribed schedule will appear here.';
+  const list = document.querySelector('#medicationList');
+  if (!list) return;
+  list.innerHTML = profile
+    ? `<article class="med-row current"><div class="med-time"><strong>${time.time}</strong><span>${time.period}</span></div><div class="med-pill blue"></div><div class="med-info"><h3>${profile.medicine}</h3><p>${profile.dose || 'Dose not specified'}${profile.instructions ? ` · ${profile.instructions}` : ''}</p></div><button class="scan-button" id="scanBtn">Scan tablet <span>→</span></button></article>`
+    : '<div class="soft-card"><strong>No prescription added yet.</strong><p class="muted">Open Medication profile and enter the information from your doctor.</p></div>';
+  document.querySelector('#scanBtn')?.addEventListener('click', openScan);
+  renderSchedule(profile);
+}
+
+function renderSchedule(profile) {
+  const list = document.querySelector('#scheduleList');
+  if (!list) return;
+  if (!profile) {
+    list.innerHTML = '<div class="soft-card"><strong>No schedule yet.</strong><p class="muted">Add the time from your doctor in Medication profile.</p></div>';
+    return;
+  }
+  const time = formatDoseTime(profile.time);
+  list.innerHTML = `<div class="day-divider"><span>Prescribed dose</span><span>${time.time} ${time.period}</span></div><div class="schedule-item next"><span class="schedule-time">${time.time} ${time.period}</span><div class="med-pill blue"></div><div><h3>${profile.medicine} <small>${profile.dose || 'Dose not specified'}${profile.instructions ? ` · ${profile.instructions}` : ''}</small></h3></div><button class="scan-button" id="scheduleScanBtn">Scan tablet <span>→</span></button></div>${profile.issue ? `<p class="muted">Health issue: ${profile.issue}</p>` : ''}`;
+  document.querySelector('#scheduleScanBtn')?.addEventListener('click', openScan);
+}
+
+function loadMedicationProfile() {
+  const profile = getMedicationProfile();
+  if (!profile) return;
+  document.querySelector('#profileIssue').value = profile.issue || '';
+  document.querySelector('#profileMedicine').value = profile.medicine || '';
+  document.querySelector('#profileTime').value = profile.time || '';
+  document.querySelector('#profileDose').value = profile.dose || '';
+  document.querySelector('#profileInstructions').value = profile.instructions || '';
+}
+
+renderMedicationProfile();
+
 function login(email, password, button, defaultLabel, onSuccess) {
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     notify('Enter a valid email address.');
@@ -59,6 +120,26 @@ document.querySelector('#gateLogin').addEventListener('click', () => {
   const password = document.querySelector('#gatePassword').value;
   login(email, password, document.querySelector('#gateLogin'), 'Sign in to PillCheck', setLoggedIn);
 });
+
+document.querySelector('#profileForm').addEventListener('submit', event => {
+  event.preventDefault();
+  const profile = {
+    issue: document.querySelector('#profileIssue').value.trim(),
+    medicine: document.querySelector('#profileMedicine').value.trim(),
+    time: document.querySelector('#profileTime').value,
+    dose: document.querySelector('#profileDose').value.trim(),
+    instructions: document.querySelector('#profileInstructions').value.trim(),
+  };
+  if (!profile.medicine || !profile.time) {
+    notify('Add the medicine name and prescribed time.');
+    return;
+  }
+  localStorage.setItem('pillcheck-medication-profile', JSON.stringify(profile));
+  renderMedicationProfile();
+  notify('Your dashboard was updated from your prescription.');
+  showView('dashboard');
+});
+loadMedicationProfile();
 
 fetch('./drug-database.json')
   .then(response => {
@@ -281,11 +362,14 @@ document.querySelectorAll('.scan-mode').forEach(mode => mode.addEventListener('c
   document.querySelector('#voiceScanBtn').addEventListener('click', () => listenForCommand(handleVoiceCommand));
 }));
 document.querySelector('#remindBtn').addEventListener('click', () => notify('Reminder snoozed for 15 minutes.'));
-document.querySelector('#addMedication').addEventListener('click', () => notify('Medication setup is ready for your next prescription.'));
+document.querySelector('#addMedication').addEventListener('click', () => showView('profile'));
 
 function showScanIntro() {
   const copy = document.querySelector('.modal-copy');
-  copy.innerHTML = '<p class="eyebrow">VERIFYING 12:30 PM DOSE</p><h2>Scan your Paracetamol</h2><p class="muted">Hold one tablet or label steady in front of your camera. OCR and matching run in your browser.</p><button class="solid-button full" id="verifyBtn">Capture &amp; verify</button><button class="outline-button full demo-mismatch" id="mismatchBtn">Try mismatch demo</button><button class="text-button centered" id="voiceScanBtn">Or say “scan now”</button>';
+  const profile = getMedicationProfile();
+  const medicine = profile?.medicine || 'your prescribed tablet';
+  const time = profile ? formatDoseTime(profile.time) : null;
+  copy.innerHTML = `<p class="eyebrow">VERIFYING ${time ? `${time.time} ${time.period}` : 'PRESCRIBED DOSE'}</p><h2>Scan your ${medicine}</h2><p class="muted">Hold one tablet or label steady in front of your camera. OCR and matching run in your browser.</p><button class="solid-button full" id="verifyBtn">Capture &amp; verify</button><button class="outline-button full demo-mismatch" id="mismatchBtn">Try mismatch demo</button><button class="text-button centered" id="voiceScanBtn">Or say “scan now”</button>`;
   document.querySelector('#verifyBtn').addEventListener('click', () => showScanResult());
   document.querySelector('#mismatchBtn').addEventListener('click', () => showScanResult(true));
   document.querySelector('#voiceScanBtn').addEventListener('click', () => listenForCommand(handleVoiceCommand));
@@ -321,7 +405,7 @@ async function showScanResult(forceMismatch = false) {
         },
       });
       ocrText = result.data.text;
-      match = matchDrugName(ocrText, 'Paracetamol');
+      match = matchDrugName(ocrText, getMedicationProfile()?.medicine || 'Paracetamol');
     } catch (error) {
       notify(error.message || 'Could not read this image.');
       return;
@@ -332,10 +416,11 @@ async function showScanResult(forceMismatch = false) {
   }
   const copy = document.querySelector('.modal-copy');
   const verdict = match.matched ? 'MATCH CONFIRMED' : 'MISMATCH DETECTED';
-  const title = match.matched ? 'This matches Paracetamol' : 'This does not look right';
+  const expectedMedicine = getMedicationProfile()?.medicine || 'your prescribed medicine';
+  const title = match.matched ? `This matches ${expectedMedicine}` : 'This does not look right';
   const description = match.matched
     ? `OCR detected “${match.detected}” with ${Math.round(match.score * 100)}% confidence.`
-    : `OCR detected “${match.detected}”. Your 12:30 PM tablet should be Paracetamol.`;
+    : `OCR detected “${match.detected}”. Your prescribed tablet should be ${expectedMedicine}.`;
   copy.innerHTML = `<p class="eyebrow">${verdict}</p><h2>${title}</h2><p class="muted">${description}</p><p class="ocr-detail">On-device OCR text: <em>${ocrText || 'demo mismatch'}</em></p>${match.matched ? '<button class="solid-button full" id="confirmDose">Confirm dose</button>' : '<button class="solid-button full" id="retryScan">Scan the correct tablet</button>'}<button class="text-button centered" id="scanAgain">Scan again</button>`;
   if (match.matched) {
     document.querySelector('#confirmDose').addEventListener('click', async () => {
