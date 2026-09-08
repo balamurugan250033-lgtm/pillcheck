@@ -1,0 +1,9 @@
+declare module 'react-native-sqlite-storage';
+declare module 'react-native-shake';
+declare module 'react-native-haptic-feedback';
+declare module 'react-native-tts';
+declare module '@react-native-voice/voice';
+declare module 'react-native-camera';
+declare module 'expo-notifications';
+declare module 'expo-device';
+declare module 'react-native-sensors';

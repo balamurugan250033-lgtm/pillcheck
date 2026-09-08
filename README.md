@@ -1,79 +1,181 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# PillCheck
 
-# Getting Started
+PillCheck is a voice-guided medication verification prototype for people who
+need extra confidence when taking multi-drug regimens. It combines a calm,
+accessible dashboard with camera-assisted scanning, browser voice controls,
+on-device OCR, fuzzy medicine-name matching, local adherence history, and an
+optional Gemini-powered health-advisor endpoint.
 
->**Note**: Make sure you have completed the [React Native - Environment Setup](https://reactnative.dev/docs/environment-setup) instructions till "Creating a new application" step, before proceeding.
+> **Prototype / hackathon status:** this repository demonstrates the end-to-end
+> interaction and local browser functionality. It is not a medical device and
+> does not replace a pharmacist or clinician. OCR and medication matching must
+> be reviewed by a qualified person before real-world use.
 
-## Step 1: Start the Metro Server
+## Features
 
-First, you will need to start **Metro**, the JavaScript _bundler_ that ships _with_ React Native.
+### Responsive web experience
 
-To start Metro, run the following command from the _root_ of your React Native project:
+- Dashboard with next-dose hero card and progress ring
+- Daily medication schedule
+- Adherence history
+- Read-only caregiver status view
+- AI health advisor with offline fallback
+- Phone/email sign-in and onboarding entry point
+- Large-print accessibility mode
+- Voice prompt and browser speech recognition controls
+- Offline-ready local status and local adherence records
 
-```bash
-# using npm
+### Camera and scan flow
+
+- Browser camera access with rear-camera preference
+- Live camera preview and permission feedback
+- Scan modes for:
+  - Loose pill
+  - Handwritten or printed prescription
+  - Medicine strip or bottle
+  - Pharmacy receipt
+- Captures a camera frame and runs Tesseract.js OCR in the browser
+- Local fuzzy matching against 30 seeded medicine names and aliases
+- Explicit match, mismatch, and scan-again states
+- Deliberate mismatch demo for presentations
+
+### Voice accessibility
+
+- Browser text-to-speech for prompts and advisor responses
+- Browser speech recognition for:
+  - `scan now`
+  - `confirm`
+  - `yes`
+  - `repeat`
+  - `remind me later`
+  - `snooze`
+- Clear fallback when the browser does not support speech recognition
+
+### Persistence
+
+Confirmed scans are stored in IndexedDB on the current device. Each record
+contains the timestamp, expected medicine, OCR text, match score, result, and
+scan mode. No adherence record is sent to a server by the web client.
+
+## Project structure
+
+```text
+PillCheckRN/
+├── App.tsx                  # React Native entry point
+├── android/                 # Android native project
+├── ios/                     # iOS native project
+├── src/                     # React Native screens, services, and state
+├── web/
+│   ├── index.html           # Responsive web application
+│   ├── styles.css           # Web visual system and responsive layout
+│   ├── app.js               # Web interactions, camera, voice, OCR, IndexedDB
+│   ├── server.js            # Static server and protected Gemini proxy
+│   └── drug-database.json   # Demo medicine names and aliases
+├── .env.example             # Environment variable template
+└── package.json
+```
+
+## Requirements
+
+- Node.js 18 or newer
+- npm
+- A modern browser for the web experience
+- Camera and microphone permissions for scan and voice features
+
+## Run the web app
+
+From the project root:
+
+```powershell
+npm install
+npm run web
+```
+
+Open <http://127.0.0.1:4173>.
+
+Camera and microphone APIs generally require `localhost`, `127.0.0.1`, or
+HTTPS. If access was blocked previously, use the browser address-bar
+permission controls to allow the camera and microphone.
+
+## Optional Gemini advisor
+
+Gemini is called only by the local Node server. The API key is never placed in
+`web/app.js`, `web/index.html`, or any browser bundle.
+
+1. Create or rotate a Gemini API key in Google AI Studio.
+2. Set it in the PowerShell process that starts the server:
+
+```powershell
+$env:GEMINI_API_KEY = "your-rotated-key"
+npm run web
+```
+
+The advisor calls `POST /api/gemini`. If the key is missing or Gemini is
+unavailable, the UI uses a small offline rule-based response instead.
+
+**Never commit a real API key.** If a key has been pasted into chat, source
+code, or a public repository, revoke it and create a replacement.
+
+## Run the React Native app
+
+Start Metro:
+
+```powershell
 npm start
-
-# OR using Yarn
-yarn start
 ```
 
-## Step 2: Start your Application
+Android:
 
-Let Metro Bundler run in its _own_ terminal. Open a _new_ terminal from the _root_ of your React Native project. Run the following command to start your _Android_ or _iOS_ app:
-
-### For Android
-
-```bash
-# using npm
+```powershell
 npm run android
-
-# OR using Yarn
-yarn android
 ```
 
-### For iOS
+iOS (macOS required):
 
-```bash
-# using npm
+```powershell
 npm run ios
-
-# OR using Yarn
-yarn ios
 ```
 
-If everything is set up _correctly_, you should see your new app running in your _Android Emulator_ or _iOS Simulator_ shortly provided you have set up your emulator/simulator correctly.
+Native camera, speech, haptics, notifications, SQLite, and shake detection
+dependencies are included for the mobile implementation. Device-specific
+permissions and native model integrations still require platform testing.
 
-This is one way to run your app — you can also run it directly from within Android Studio and Xcode respectively.
+## Validation
 
-## Step 3: Modifying your App
+Useful checks:
 
-Now that you have successfully run the app, let's modify it.
+```powershell
+node --check web\app.js
+node --check web\server.js
+npm test
+npm run lint
+```
 
-1. Open `App.tsx` in your text editor of choice and edit some lines.
-2. For **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Developer Menu** (<kbd>Ctrl</kbd> + <kbd>M</kbd> (on Window and Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (on macOS)) to see your changes!
+The website was validated with:
 
-   For **iOS**: Hit <kbd>Cmd ⌘</kbd> + <kbd>R</kbd> in your iOS Simulator to reload the app and see your changes!
+- JavaScript syntax checks
+- Local HTTP server response checks
+- Browser dashboard navigation
+- Live scan modal flow
+- Deliberate mismatch verdict
+- Local IndexedDB dose persistence
+- Advisor fallback behavior when Gemini is not configured
 
-## Congratulations! :tada:
+## Roadmap
 
-You've successfully run and modified your React Native App. :partying_face:
+The following are intentionally outside the current prototype scope:
 
-### Now what?
+- Clinical-grade pill visual identification
+- Production handwriting recognition and prescription extraction
+- Real OTP delivery and account management
+- Biometric unlock
+- Encrypted cloud sync
+- Remote caregiver accounts
+- Barcode/QR, insurance-card, and receipt-specific extraction models
+- Native push notifications and production haptic patterns
+- Medical validation, regulatory review, and clinical safety testing
 
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [Introduction to React Native](https://reactnative.dev/docs/getting-started).
+## License
 
-# Troubleshooting
-
-If you can't get this to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
-
-# Learn More
-
-To learn more about React Native, take a look at the following resources:
-
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+This project is currently an internal prototype. Add a project license before
+public distribution.
