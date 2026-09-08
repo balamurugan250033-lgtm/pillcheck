@@ -116,6 +116,20 @@ unavailable, the UI uses a small offline rule-based response instead.
 **Never commit a real API key.** If a key has been pasted into chat, source
 code, or a public repository, revoke it and create a replacement.
 
+## Deploy to Vercel
+
+The web app includes a Vercel configuration and a serverless Gemini function.
+From the project root:
+
+```powershell
+npx vercel login
+npx vercel --prod
+```
+
+In the Vercel project settings, add `GEMINI_API_KEY` as an Environment Variable
+for Production. Do not add the key to `web/`, `.env.example`, or committed
+source files.
+
 ## Run the React Native app
 
 Start Metro:
