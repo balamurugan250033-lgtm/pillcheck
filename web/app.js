@@ -28,22 +28,56 @@ if (storedSession) authGate.classList.add('hidden');
 
 document.querySelector('#gateSendCode').addEventListener('click', () => {
   const contact = document.querySelector('#gateContact').value.trim();
-  if (!contact || !(/[^\s@]+@[^\s@]+\.[^\s@]+/.test(contact) || /^\+?[0-9\s-]{7,}$/.test(contact))) {
-    notify('Enter a valid email address or phone number.');
+  if (!contact || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact)) {
+    notify('Enter a valid email address.');
     return;
   }
-  document.querySelector('#contactStep').hidden = true;
-  document.querySelector('#codeStep').hidden = false;
-  document.querySelector('#gateSubtitle').textContent = `We sent a verification code to ${contact}.`;
-  notify('Demo code sent. Use 123456 to continue.');
+  const button = document.querySelector('#gateSendCode');
+  button.disabled = true;
+  button.textContent = 'Sending…';
+  fetch('/api/auth/request', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: contact }),
+  })
+    .then(async response => {
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Unable to send code.');
+      document.querySelector('#contactStep').hidden = true;
+      document.querySelector('#codeStep').hidden = false;
+      document.querySelector('#gateSubtitle').textContent = `We sent a verification code to ${contact}.`;
+      notify('Verification code sent. Check your email.');
+    })
+    .catch(error => notify(error.message))
+    .finally(() => {
+      button.disabled = false;
+      button.textContent = 'Send verification code';
+    });
 });
 document.querySelector('#gateVerify').addEventListener('click', () => {
   const code = document.querySelector('#gateCode').value.trim();
-  if (code !== '123456') {
-    notify('For this prototype, enter the demo code 123456.');
+  const button = document.querySelector('#gateVerify');
+  if (!/^\d{6}$/.test(code)) {
+    notify('Enter the 6-digit code from your email.');
     return;
   }
-  setLoggedIn(document.querySelector('#gateContact').value.trim());
+  button.disabled = true;
+  button.textContent = 'Verifying…';
+  fetch('/api/auth/verify', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code }),
+  })
+    .then(async response => {
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Verification failed.');
+      setLoggedIn(result.email);
+    })
+    .catch(error => notify(error.message))
+    .finally(() => {
+      button.disabled = false;
+      button.textContent = 'Verify and open PillCheck';
+    });
 });
 document.querySelector('#gateBack').addEventListener('click', () => {
   document.querySelector('#contactStep').hidden = false;
