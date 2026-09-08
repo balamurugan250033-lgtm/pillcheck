@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert, Dimensions } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { RNCamera } from 'react-native-camera';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
-import { RootStackParamList, Prescription, Medication, ScheduleEntry } from '../types';
+import { RootStackParamList, Prescription, Medication } from '../types';
 import { storage } from '../services/StorageService';
 import { useApp } from '../store/context';
 
@@ -25,7 +25,9 @@ export default function PrescriptionCaptureScreen({ navigation }: Props) {
   }, []);
 
   const takePicture = async () => {
-    if (!cameraRef.current) return;
+    if (!cameraRef.current) {
+      return;
+    }
     try {
       const photo = await cameraRef.current.takePictureAsync({ quality: 0.5, base64: false });
       const prescription = await processPrescriptionPhoto(photo.uri);

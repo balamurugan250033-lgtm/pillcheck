@@ -3,7 +3,6 @@ import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-nati
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types';
 import { storage } from '../services/StorageService';
-import { useApp } from '../store/context';
 
 type Props = {
   navigation: NativeStackNavigationProp<RootStackParamList, 'History'>;
@@ -13,13 +12,12 @@ export default function HistoryScreen({ navigation }: Props) {
   const [results, setResults] = useState<any[]>([]);
 
   useEffect(() => {
+    const loadHistory = async () => {
+      const data = await storage.getTodaysScanResults();
+      setResults(data);
+    };
     loadHistory();
   }, []);
-
-  const loadHistory = async () => {
-    const data = await storage.getTodaysScanResults();
-    setResults(data);
-  };
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -54,9 +52,6 @@ const styles = StyleSheet.create({
   },
   time: { fontSize: 14, color: '#64748b', marginBottom: 4 },
   verdict: { fontSize: 20, fontWeight: '800', marginBottom: 4 },
-  match: { color: '#10b981' },
-  mismatch: { color: '#ef4444' },
-  uncertain: { color: '#f59e0b' },
   confidence: { fontSize: 14, color: '#475569' },
   response: { fontSize: 14, color: '#475569', marginTop: 4 },
   closeBtn: {

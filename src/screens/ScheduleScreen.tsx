@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
-import { RootStackParamList, Prescription, ScheduleEntry } from '../types';
-import { useApp } from '../store/context';
+import { RootStackParamList, ScheduleEntry } from '../types';
 import { generateTodaysSchedule, getNextDueSchedule } from '../utils/scheduleEngine';
+import { useApp } from '../store/context';
 import { SpeechService } from '../services/SpeechService';
 import { HapticService } from '../services/HapticService';
 
@@ -14,9 +14,9 @@ type Props = {
 };
 
 export default function ScheduleScreen({ navigation, route }: Props) {
-  const { currentPrescription, settings } = useApp();
+  const { currentPrescription } = useApp();
   const [schedule, setSchedule] = useState<ScheduleEntry[]>([]);
-  const speech = new SpeechService();
+  const speech = useMemo(() => new SpeechService(), []);
 
   useEffect(() => {
     speech.init();
@@ -24,37 +24,38 @@ export default function ScheduleScreen({ navigation, route }: Props) {
       const todays = generateTodaysSchedule(currentPrescription.medications);
       setSchedule(todays);
     }
-    return () => speech.destroy();
-  }, [currentPrescription]);
+    return () => {
+      speech.destroy();
+    };
+  }, [currentPrescription, speech]);
 
   useEffect(() => {
-    if (route.params?.prescriptionId && currentPrescription?.id !== route.params.prescriptionId) {
-      const loaded = generateTodaysSchedule(currentPrescription?.medications || []);
+    if (route.params?.prescriptionId && currentPrescription?.id === route.params.prescriptionId) {
+      const loaded = generateTodaysSchedule(currentPrescription.medications || []);
       setSchedule(loaded);
     }
-  }, [route.params?.prescriptionId]);
+  }, [route.params?.prescriptionId, currentPrescription]);
 
   const nextDue = getNextDueSchedule(schedule);
 
-  const handleScan = (scheduleId: string) => {
-    if (!currentPrescription) return;
+  const handleScan = useCallback((scheduleId: string) => {
+    if (!currentPrescription) {
+      return;
+    }
     HapticService.trigger('select');
     navigation.navigate('TabletScan', {
       prescriptionId: currentPrescription.id,
       scheduleId,
     });
-  };
+  }, [currentPrescription, navigation]);
 
-  const speakSchedule = async () => {
-    if (schedule.length === 0) return;
-    await speech.speak(`You have ${schedule.length} doses today.`);
-    for (const s of schedule) {
-      const med = currentPrescription?.medications.find(m => m.schedule.some(sc => sc.id === s.id));
-      const medName = med?.name || 'medication';
-      const status = s.taken ? 'already taken' : s.status === 'skipped' ? 'skipped' : 'due';
-      await speech.speak(`${s.time}: ${medName}, ${status}.`);
+  const speakSchedule = useCallback(() => {
+    if (schedule.length === 0) {
+      return;
     }
-  };
+    const text = `Today you have ${schedule.length} doses. The next one is at ${nextDue?.time || 'later'}.`;
+    speech.speak(text);
+  }, [schedule, nextDue, speech]);
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -92,20 +93,20 @@ export default function ScheduleScreen({ navigation, route }: Props) {
               <Text style={styles.time}>{s.time}</Text>
               <Text style={[
                 styles.status,
-                s.taken ? styles.statusTaken : styles.statusPending
+                s.taken ? styles.statusTaken : styles.statusPending,
               ]}>
-                {s.taken ? 'TAKEN' : s.status.toUpperCase()}
+                {s.taken ? 'TAKEN' : 'PENDING'}
               </Text>
             </View>
             <Text style={styles.medName}>{med?.name || 'Unknown'}</Text>
             <Text style={styles.dose}>{med?.dose}</Text>
             {s.withFood && <Text style={styles.food}>Take with food</Text>}
-            {!s.taken && s.status !== 'skipped' && (
+            {!s.taken && (
               <TouchableOpacity
                 style={styles.cardScanBtn}
                 onPress={() => handleScan(s.id)}
               >
-                <Text style={styles.cardScanBtnText}>Scan</Text>
+                <Text style={styles.cardScanBtnText}>Scan Tablet</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -150,21 +151,20 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 10,
   },
-  scanBtnText: { color: '#2563eb', fontSize: 16, fontWeight: '700' },
+  scanBtnText: { color: '#2563eb', fontWeight: '700' },
   card: {
     backgroundColor: '#fff',
-    padding: 16,
+    padding: 18,
     borderRadius: 14,
-    marginBottom: 12,
-    borderLeftWidth: 4,
-    borderLeftColor: '#e2e8f0',
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
   },
   cardTaken: { opacity: 0.6 },
-  cardNext: { borderLeftColor: '#2563eb' },
+  cardNext: { borderColor: '#2563eb', borderWidth: 2 },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
     marginBottom: 8,
   },
   time: { fontSize: 18, fontWeight: '700', color: '#0f172a' },

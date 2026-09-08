@@ -105,18 +105,24 @@ http.createServer(async (request, response) => {
     }
     return;
   }
-  const requestedPath = request.url === '/' ? 'index.html' : request.url.slice(1);
+  const requestedPath = request.url === '/' ? 'index.html' : request.url.split('?')[0].slice(1);
   const filePath = path.resolve(root, requestedPath);
-  if (!filePath.startsWith(root) || !fs.existsSync(filePath)) {
+  if (!filePath.startsWith(root) || !fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
     response.writeHead(404);
     response.end('Not found');
     return;
   }
 
-  response.writeHead(200, {
-    'Content-Type': mimeTypes[path.extname(filePath)] || 'application/octet-stream',
-  });
-  response.end(fs.readFileSync(filePath));
+  try {
+    const ext = path.extname(filePath);
+    response.writeHead(200, {
+      'Content-Type': mimeTypes[ext] || 'application/octet-stream',
+    });
+    response.end(fs.readFileSync(filePath));
+  } catch (error) {
+    response.writeHead(500);
+    response.end('Internal server error');
+  }
 }).listen(port, '127.0.0.1', () => {
   console.log(`PillCheck website running at http://127.0.0.1:${port}`);
 });

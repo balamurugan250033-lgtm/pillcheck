@@ -1,4 +1,4 @@
-import { Platform, Vibration, Dimensions } from 'react-native';
+import { Platform, Vibration } from 'react-native';
 
 export const HAPTIC_PATTERNS = {
   reminder: [100, 50, 100] as number[],
@@ -11,7 +11,7 @@ export const HAPTIC_PATTERNS = {
 export class HapticService {
   static trigger(patternName: keyof typeof HAPTIC_PATTERNS) {
     const pattern = HAPTIC_PATTERNS[patternName];
-    if (Platform.OS === 'android' && Platform.Version >= 26) {
+    if (Platform.OS === 'android') {
       Vibration.vibrate(pattern);
     } else if (Platform.OS === 'ios') {
       Vibration.vibrate(pattern[0]);

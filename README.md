@@ -60,17 +60,21 @@ scan mode. No adherence record is sent to a server by the web client.
 ## Project structure
 
 ```text
-PillCheckRN/
+pillcheck/
 ├── App.tsx                  # React Native entry point
+├── index.js                 # React Native entry point (index)
 ├── android/                 # Android native project
 ├── ios/                     # iOS native project
 ├── src/                     # React Native screens, services, and state
+├── api/
+│   └── gemini.js            # Serverless Gemini proxy for Vercel
 ├── web/
 │   ├── index.html           # Responsive web application
 │   ├── styles.css           # Web visual system and responsive layout
 │   ├── app.js               # Web interactions, camera, voice, OCR, IndexedDB
 │   ├── server.js            # Static server and protected Gemini proxy
 │   └── drug-database.json   # Demo medicine names and aliases
+├── vercel.json              # Vercel deployment configuration
 ├── .env.example             # Environment variable template
 └── package.json
 ```
@@ -158,7 +162,7 @@ iOS (macOS required):
 npm run ios
 ```
 
-Native camera, speech, haptics, notifications, SQLite, and shake detection
+Native camera, speech, haptics, SQLite, and shake detection
 dependencies are included for the mobile implementation. Device-specific
 permissions and native model integrations still require platform testing.
 
@@ -167,8 +171,8 @@ permissions and native model integrations still require platform testing.
 Useful checks:
 
 ```powershell
-node --check web\app.js
-node --check web\server.js
+node --check web/app.js
+node --check web/server.js
 npm test
 npm run lint
 ```

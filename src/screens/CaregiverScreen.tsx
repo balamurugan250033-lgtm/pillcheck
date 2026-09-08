@@ -3,7 +3,6 @@ import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-nati
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types';
 import { storage } from '../services/StorageService';
-import { useApp } from '../store/context';
 
 type Props = {
   navigation: NativeStackNavigationProp<RootStackParamList, 'Caregiver'>;
@@ -14,20 +13,14 @@ export default function CaregiverScreen({ navigation }: Props) {
   const [prescriptions, setPrescriptions] = useState<any[]>([]);
 
   useEffect(() => {
+    const loadData = async () => {
+      const data = await storage.getTodaysScanResults();
+      setResults(data);
+      const rx = await storage.getTodaysScanResults();
+      setPrescriptions(rx);
+    };
     loadData();
   }, []);
-
-  const loadData = async () => {
-    const data = await storage.getTodaysScanResults();
-    setResults(data);
-    const rx = await getActivePrescriptions();
-    setPrescriptions(rx);
-  };
-
-  const getActivePrescriptions = async () => {
-    const rx = await storage.getTodaysScanResults();
-    return rx;
-  };
 
   const takenCount = results.filter(r => r.userResponse === 'confirm').length;
   const totalCount = results.length || 0;
@@ -86,9 +79,6 @@ const styles = StyleSheet.create({
   cardTitle: { fontSize: 18, fontWeight: '600', color: '#0f172a' },
   cardDetail: { fontSize: 14, color: '#64748b', marginTop: 4 },
   cardStatus: { fontSize: 14, fontWeight: '700', marginTop: 8 },
-  match: { color: '#10b981' },
-  mismatch: { color: '#ef4444' },
-  uncertain: { color: '#f59e0b' },
   closeBtn: {
     backgroundColor: '#2563eb',
     padding: 14,

@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../types';
@@ -12,20 +12,31 @@ type Props = {
   route: RouteProp<RootStackParamList, 'Verdict'>;
 };
 
-export default function VerdictScreen({ navigation, route }: Props) {
+export default function VerdictScreen({ navigation }: Props) {
   const { scanResults, currentPrescription } = useApp();
   const [flashing, setFlashing] = useState(false);
   const [listening, setListening] = useState(false);
   const [transcript, setTranscript] = useState('');
-  const speech = new SpeechService();
+  const speech = useMemo(() => new SpeechService(), []);
   const result = scanResults[0];
+
+  const speakWithFlash = useCallback(async (text: string, type: 'match' | 'mismatch' | 'error') => {
+    HapticService.trigger(type);
+    if (type === 'match') {
+      setFlashing(true);
+    }
+    await speech.speak(text);
+    setFlashing(false);
+  }, [speech]);
 
   useEffect(() => {
     speech.init();
     let mounted = true;
-    (async () => {
-      await new Promise<void>(r => setTimeout(r, 300));
-      if (!mounted) return;
+    const runEffect = async () => {
+      await new Promise<void>(resolve => setTimeout(resolve, 300));
+      if (!mounted) {
+        return;
+      }
       if (result) {
         const med = currentPrescription?.medications.find(m => m.id === result.medicationId);
         if (result.match === 'match') {
@@ -38,16 +49,48 @@ export default function VerdictScreen({ navigation, route }: Props) {
           await speakWithFlash('I am not certain. Please try scanning again.', 'error');
         }
       }
-    })();
-    return () => { mounted = false; speech.destroy(); };
-  }, []);
+    };
+    runEffect();
+    return () => {
+      mounted = false;
+      speech.destroy();
+    };
+  }, [result, currentPrescription, speakWithFlash, speech]);
 
-  const speakWithFlash = async (text: string, type: 'match' | 'mismatch' | 'error') => {
-    HapticService.trigger(type);
-    if (type === 'match') setFlashing(true);
-    await speech.speak(text);
-    setFlashing(false);
-  };
+  const confirm = useCallback(async () => {
+    await speech.speak('Confirmed. Taking this tablet.');
+    navigation.navigate('Home');
+  }, [navigation, speech]);
+
+  const skip = useCallback(async () => {
+    await speech.speak('Skipped this dose.');
+    navigation.navigate('Home');
+  }, [navigation, speech]);
+
+  const remindLater = useCallback(async () => {
+    await speech.speak('I will remind you in five minutes.');
+    navigation.navigate('Home');
+  }, [navigation, speech]);
+
+  const askAlternative = useCallback(async () => {
+    const med = currentPrescription?.medications.find(m => m.id === result?.medicationId);
+    const alt = currentPrescription?.medications.find(m => m.id !== result?.medicationId);
+    await speech.speak(`Try your ${med?.name || 'scheduled tablet'} instead. ${alt ? `Your other tablet is ${alt.name}.` : ''}`);
+  }, [currentPrescription, result, speech]);
+
+  const handleVoiceCommand = useCallback(async (text: string) => {
+    if (text.includes('confirm')) {
+      await confirm();
+    } else if (text.includes('skip')) {
+      await skip();
+    } else if (text.includes('later') || text.includes('remind')) {
+      await remindLater();
+    } else if (text.includes('instead') || text.includes('alternative')) {
+      await askAlternative();
+    } else {
+      await speech.speak('I did not understand. Please use a button below.');
+    }
+  }, [confirm, skip, remindLater, askAlternative, speech]);
 
   const startListening = async () => {
     setListening(true);
@@ -61,37 +104,8 @@ export default function VerdictScreen({ navigation, route }: Props) {
       (err: string) => {
         setTranscript(err);
         setListening(false);
-      }
+      },
     );
-  };
-
-  const handleVoiceCommand = async (text: string) => {
-    if (text.includes('confirm')) await confirm();
-    else if (text.includes('skip')) await skip();
-    else if (text.includes('later') || text.includes('remind')) await remindLater();
-    else if (text.includes('instead') || text.includes('alternative')) await askAlternative();
-    else await speech.speak('I did not understand. Please use a button below.');
-  };
-
-  const confirm = async () => {
-    await speech.speak('Confirmed. Taking this tablet.');
-    navigation.navigate('Home');
-  };
-
-  const skip = async () => {
-    await speech.speak('Skipped this dose.');
-    navigation.navigate('Home');
-  };
-
-  const remindLater = async () => {
-    await speech.speak('I will remind you in five minutes.');
-    navigation.navigate('Home');
-  };
-
-  const askAlternative = async () => {
-    const med = currentPrescription?.medications.find(m => m.id === result?.medicationId);
-    const alt = currentPrescription?.medications.find(m => m.id !== result?.medicationId);
-    await speech.speak(`Try your ${med?.name || 'scheduled tablet'} instead. ${alt ? `Your other tablet is ${alt.name}.` : ''}`);
   };
 
   return (
