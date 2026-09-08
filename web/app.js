@@ -37,6 +37,7 @@ document.querySelector('#gateSendCode').addEventListener('click', () => {
   button.textContent = 'Sending…';
   fetch('/api/auth/request', {
     method: 'POST',
+    credentials: 'same-origin',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email: contact }),
   })
@@ -65,6 +66,7 @@ document.querySelector('#gateVerify').addEventListener('click', () => {
   button.textContent = 'Verifying…';
   fetch('/api/auth/verify', {
     method: 'POST',
+    credentials: 'same-origin',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ code }),
   })
