@@ -132,17 +132,11 @@ source files.
 
 ## Password login
 
-Production login uses the email address and a shared password configured on the
-server. Add these Vercel Production environment variables:
-
-```text
-AUTH_SECRET
-AUTH_PASSWORD
-```
-
-Use a long, unique `AUTH_PASSWORD`. The browser never receives the configured
-password; the login page displays a setup error if password authentication is
-not configured.
+The prototype accepts any valid-looking email address and any non-empty password
+to make demos and collaboration easy. This is not account authentication:
+credentials are not stored or verified against a user database. Configure
+`AUTH_SECRET` in Vercel if you want signed session cookies to use a deployment
+specific secret.
 
 ## Run the React Native app
 
