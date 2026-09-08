@@ -3,6 +3,7 @@ const navItems = document.querySelectorAll('[data-view]');
 const modal = document.querySelector('#scanModal');
 const toast = document.querySelector('#toast');
 const toastText = document.querySelector('#toastText');
+const authGate = document.querySelector('#authGate');
 const cameraVideo = document.querySelector('#cameraVideo');
 const cameraStatus = document.querySelector('#cameraStatus');
 let cameraStream = null;
@@ -10,6 +11,45 @@ const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecogni
 let recognition = null;
 let drugDatabase = [];
 let selectedScanMode = 'pill';
+
+function setLoggedIn(contact) {
+  localStorage.setItem('pillcheck-session', JSON.stringify({ contact, signedInAt: new Date().toISOString() }));
+  authGate.classList.add('hidden');
+}
+
+function signOut() {
+  localStorage.removeItem('pillcheck-session');
+  authGate.classList.remove('hidden');
+  document.querySelector('#gateCode').value = '';
+}
+
+const storedSession = localStorage.getItem('pillcheck-session');
+if (storedSession) authGate.classList.add('hidden');
+
+document.querySelector('#gateSendCode').addEventListener('click', () => {
+  const contact = document.querySelector('#gateContact').value.trim();
+  if (!contact || !(/[^\s@]+@[^\s@]+\.[^\s@]+/.test(contact) || /^\+?[0-9\s-]{7,}$/.test(contact))) {
+    notify('Enter a valid email address or phone number.');
+    return;
+  }
+  document.querySelector('#contactStep').hidden = true;
+  document.querySelector('#codeStep').hidden = false;
+  document.querySelector('#gateSubtitle').textContent = `We sent a verification code to ${contact}.`;
+  notify('Demo code sent. Use 123456 to continue.');
+});
+document.querySelector('#gateVerify').addEventListener('click', () => {
+  const code = document.querySelector('#gateCode').value.trim();
+  if (code !== '123456') {
+    notify('For this prototype, enter the demo code 123456.');
+    return;
+  }
+  setLoggedIn(document.querySelector('#gateContact').value.trim());
+});
+document.querySelector('#gateBack').addEventListener('click', () => {
+  document.querySelector('#contactStep').hidden = false;
+  document.querySelector('#codeStep').hidden = true;
+  document.querySelector('#gateSubtitle').textContent = 'Sign in to continue to your private medication dashboard.';
+});
 
 fetch('./drug-database.json')
   .then(response => {
@@ -350,7 +390,9 @@ function fallbackAdvisorAnswer(question) {
 
 async function answerAdvisor(question) {
   const bubble = document.querySelector('.chat-bubble');
+  const status = document.querySelector('#advisorStatus');
   bubble.textContent = 'Checking your private advisor…';
+  status.textContent = 'Gemini is thinking…';
   try {
     const response = await fetch('/api/gemini', {
       method: 'POST',
@@ -360,10 +402,12 @@ async function answerAdvisor(question) {
     const result = await response.json();
     if (!response.ok) throw new Error(result.error || 'Advisor unavailable');
     bubble.textContent = result.text;
+    status.textContent = 'Gemini connected · response generated privately';
     speak(result.text);
-  } catch {
+  } catch (error) {
     fallbackAdvisorAnswer(question);
-    notify('Gemini is unavailable, so I showed the offline advisor response.');
+    status.textContent = 'Offline advisor fallback · configure GEMINI_API_KEY for Gemini';
+    notify(error.message || 'Gemini is unavailable, so I showed the offline advisor response.');
   }
 }
 document.querySelectorAll('.suggestion').forEach(button => button.addEventListener('click', () => answerAdvisor(button.textContent)));
