@@ -94,16 +94,30 @@ function levenshtein(a, b) {
 }
 
 function matchDrugName(ocrText, expectedName) {
-  const words = normalize(ocrText).split(/\s+/).filter(Boolean);
+  const normalizedText = normalize(ocrText);
+  const words = normalizedText.split(/\s+/).filter(Boolean);
   const expected = normalize(expectedName);
   const candidates = [expected, ...(drugDatabase.find(item => item.name === expectedName)?.aliases || [])].map(normalize);
   let best = { text: '', score: 0 };
+  const exactCandidate = candidates.find(candidate => normalizedText.includes(candidate));
+  if (exactCandidate) {
+    return { matched: true, score: 1, detected: exactCandidate };
+  }
   words.forEach(word => candidates.forEach(candidate => {
     const distance = levenshtein(word, candidate);
     const score = 1 - (distance / Math.max(word.length, candidate.length, 1));
     if (score > best.score) best = { text: word, score };
   }));
-  return { matched: best.score >= 0.72, score: best.score, detected: best.text || 'no medicine name detected' };
+  const compactText = normalizedText.replace(/\s+/g, '');
+  candidates.forEach(candidate => {
+    const compactCandidate = candidate.replace(/\s+/g, '');
+    for (let index = 0; index <= Math.max(0, compactText.length - compactCandidate.length); index += 1) {
+      const fragment = compactText.slice(index, index + compactCandidate.length);
+      const score = 1 - (levenshtein(fragment, compactCandidate) / Math.max(fragment.length, compactCandidate.length, 1));
+      if (score > best.score) best = { text: candidate, score };
+    }
+  });
+  return { matched: best.score >= 0.68, score: best.score, detected: best.text || 'no medicine name detected' };
 }
 
 function speak(message) {
