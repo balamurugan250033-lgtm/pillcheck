@@ -19,16 +19,12 @@
         <h1 id="gateTitle">Welcome back</h1>
         <p class="muted" id="gateSubtitle">Sign in to continue to your private medication dashboard.</p>
         <div id="contactStep">
-          <label class="form-label" for="gateContact">Phone number or email</label>
+          <label class="form-label" for="gateContact">Email address</label>
           <input class="auth-field" id="gateContact" placeholder="you@example.com" autocomplete="email" />
-          <button class="solid-button full" id="gateSendCode">Send verification code</button>
-          <p class="auth-help">We’ll email a one-time code. No medical data is stored in the email.</p>
-        </div>
-        <div id="codeStep" hidden>
-          <label class="form-label" for="gateCode">Enter your 6-digit code</label>
-          <input class="auth-field" id="gateCode" inputmode="numeric" maxlength="6" placeholder="123456" autocomplete="one-time-code" />
-          <button class="solid-button full" id="gateVerify">Verify and open PillCheck</button>
-          <button class="text-button centered" id="gateBack">Use a different email or phone</button>
+          <label class="form-label" for="gatePassword">Password</label>
+          <input class="auth-field" id="gatePassword" type="password" placeholder="Enter your password" autocomplete="current-password" />
+          <button class="solid-button full" id="gateLogin">Sign in to PillCheck</button>
+          <p class="auth-help">Your password is checked securely and is never stored in the browser.</p>
         </div>
         <p class="auth-help">By continuing, you agree to use this prototype with clinician guidance.</p>
       </div>
@@ -81,6 +77,13 @@
             </article>
             <article class="progress-card"><div class="progress-header"><div><p class="eyebrow">TODAY'S PROGRESS</p><p class="progress-number"><strong>2</strong> <span>of 4 doses</span></p></div><div class="ring"><span>50%</span></div></div><div class="progress-bar"><span></span></div><div class="progress-caption"><span>Keep going!</span><span>2 doses left</span></div></article>
           </div>
+          <div class="quick-actions" aria-label="PillCheck tools">
+            <div><p class="eyebrow">QUICK ACTIONS</p><h2>Scan and speak</h2><p class="muted">Use your camera to read a prescription or verify a tablet.</p></div>
+            <div class="quick-action-buttons">
+              <button class="outline-button" id="scanPrescriptionBtn">Scan doctor prescription <span>→</span></button>
+              <button class="solid-button" id="scanTabletBtn">Scan tablet <span>→</span></button>
+            </div>
+          </div>
 
           <div class="section-heading"><div><p class="eyebrow">UP NEXT</p><h2>Today's medication</h2></div><button class="text-button" data-view="schedule">View full schedule <span>→</span></button></div>
           <div class="med-list">
@@ -108,7 +111,7 @@
     <div class="scan-modal" id="scanModal" role="dialog" aria-modal="true" aria-labelledby="scanTitle">
       <div class="modal-card"><button class="close-modal" id="closeModal" aria-label="Close">×</button><div class="camera-preview"><video id="cameraVideo" autoplay muted playsinline></video><canvas id="captureCanvas" hidden></canvas><div class="camera-corners"></div><div class="scan-target"><div class="med-pill blue"></div><span id="scanHint">Place one tablet or label inside the frame</span></div><div class="camera-status"><span class="live-dot"></span><span id="cameraStatus">Starting camera…</span></div></div><div class="scan-copy"><div class="scan-modes" role="tablist" aria-label="Scan type"><button class="scan-mode active" data-mode="pill">Loose pill</button><button class="scan-mode" data-mode="prescription">Prescription</button><button class="scan-mode" data-mode="package">Strip / bottle</button><button class="scan-mode" data-mode="receipt">Receipt</button></div><div class="modal-copy"><p class="eyebrow">VERIFYING 12:30 PM DOSE</p><h2 id="scanTitle">Scan your Paracetamol</h2><p class="muted">Hold one tablet or label steady in front of your camera. OCR and matching run in your browser.</p><button class="solid-button full" id="verifyBtn">Capture &amp; verify</button><button class="outline-button full demo-mismatch" id="mismatchBtn">Try mismatch demo</button><button class="text-button centered" id="voiceScanBtn">Or say “scan now”</button></div></div></div>
     </div>
-    <div class="auth-modal" id="authModal" role="dialog" aria-modal="true" aria-labelledby="authTitle"><div class="auth-card"><button class="close-modal" id="closeAuth" aria-label="Close">×</button><span class="brand-mark">✦</span><p class="eyebrow">WELCOME BACK</p><h2 id="authTitle">Your health, in your hands.</h2><p class="muted">Sign in with your phone or email. Your medication data stays private on this device.</p><label>Phone or email<input id="authContact" placeholder="you@example.com" /></label><button class="solid-button full" id="sendOtp">Send secure code</button><p class="auth-note">New to PillCheck? <button id="startOnboarding" class="text-button">Set up your profile</button></p></div></div>
+    <div class="auth-modal" id="authModal" role="dialog" aria-modal="true" aria-labelledby="authTitle"><div class="auth-card"><button class="close-modal" id="closeAuth" aria-label="Close">×</button><span class="brand-mark">✦</span><p class="eyebrow">WELCOME BACK</p><h2 id="authTitle">Your health, in your hands.</h2><p class="muted">Sign in with your email and password. Your medication data stays private on this device.</p><label>Email address<input id="authContact" type="email" placeholder="you@example.com" autocomplete="email" /></label><label>Password<input id="authPassword" type="password" placeholder="Enter your password" autocomplete="current-password" /></label><button class="solid-button full" id="sendPassword">Sign in securely</button><p class="auth-note">New to PillCheck? <button id="startOnboarding" class="text-button">Set up your profile</button></p></div></div>
     <div class="toast" id="toast"><span>✦</span><span id="toastText">Your reminder has been snoozed.</span></div>
     <script src="./app.js"></script>
   </body>

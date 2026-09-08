@@ -130,21 +130,19 @@ In the Vercel project settings, add `GEMINI_API_KEY` as an Environment Variable
 for Production. Do not add the key to `web/`, `.env.example`, or committed
 source files.
 
-## Email verification login
+## Password login
 
-Production login sends a six-digit, ten-minute verification code through
-Resend. Add these Vercel Production environment variables:
+Production login uses the email address and a shared password configured on the
+server. Add these Vercel Production environment variables:
 
 ```text
-RESEND_API_KEY
-RESEND_FROM_EMAIL
 AUTH_SECRET
+AUTH_PASSWORD
 ```
 
-`RESEND_FROM_EMAIL` must use a sender address allowed by your Resend account.
-The browser never sees the Resend API key. If email authentication is not
-configured, the login page displays a setup error rather than accepting a fake
-code.
+Use a long, unique `AUTH_PASSWORD`. The browser never receives the configured
+password; the login page displays a setup error if password authentication is
+not configured.
 
 ## Run the React Native app
 
@@ -197,7 +195,7 @@ The following are intentionally outside the current prototype scope:
 
 - Clinical-grade pill visual identification
 - Production handwriting recognition and prescription extraction
-- Real OTP delivery and account management
+- Individual account registration and account management
 - Biometric unlock
 - Encrypted cloud sync
 - Remote caregiver accounts

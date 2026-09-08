@@ -16,12 +16,8 @@
       "dest": "/api/gemini.js"
     },
     {
-      "src": "/api/auth/request",
-      "dest": "/api/auth/request.js"
-    },
-    {
-      "src": "/api/auth/verify",
-      "dest": "/api/auth/verify.js"
+      "src": "/api/auth/login",
+      "dest": "/api/auth/login.js"
     },
     {
       "src": "/api/(.*)",

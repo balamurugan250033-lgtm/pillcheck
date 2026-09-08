@@ -20,71 +20,44 @@ function setLoggedIn(contact) {
 function signOut() {
   localStorage.removeItem('pillcheck-session');
   authGate.classList.remove('hidden');
-  document.querySelector('#gateCode').value = '';
+  document.querySelector('#gatePassword').value = '';
 }
 
 const storedSession = localStorage.getItem('pillcheck-session');
 if (storedSession) authGate.classList.add('hidden');
 
-document.querySelector('#gateSendCode').addEventListener('click', () => {
-  const contact = document.querySelector('#gateContact').value.trim();
-  if (!contact || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact)) {
+function login(email, password, button, defaultLabel, onSuccess) {
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     notify('Enter a valid email address.');
     return;
   }
-  const button = document.querySelector('#gateSendCode');
-  button.disabled = true;
-  button.textContent = 'Sending…';
-  fetch('/api/auth/request', {
-    method: 'POST',
-    credentials: 'same-origin',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: contact }),
-  })
-    .then(async response => {
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || 'Unable to send code.');
-      document.querySelector('#contactStep').hidden = true;
-      document.querySelector('#codeStep').hidden = false;
-      document.querySelector('#gateSubtitle').textContent = `We sent a verification code to ${contact}.`;
-      notify('Verification code sent. Check your email.');
-    })
-    .catch(error => notify(error.message))
-    .finally(() => {
-      button.disabled = false;
-      button.textContent = 'Send verification code';
-    });
-});
-document.querySelector('#gateVerify').addEventListener('click', () => {
-  const code = document.querySelector('#gateCode').value.trim();
-  const button = document.querySelector('#gateVerify');
-  if (!/^\d{6}$/.test(code)) {
-    notify('Enter the 6-digit code from your email.');
+  if (!password) {
+    notify('Enter your password.');
     return;
   }
   button.disabled = true;
-  button.textContent = 'Verifying…';
-  fetch('/api/auth/verify', {
+  button.textContent = 'Signing in…';
+  fetch('/api/auth/login', {
     method: 'POST',
     credentials: 'same-origin',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ code }),
+    body: JSON.stringify({ email, password }),
   })
     .then(async response => {
       const result = await response.json();
-      if (!response.ok) throw new Error(result.error || 'Verification failed.');
-      setLoggedIn(result.email);
+      if (!response.ok) throw new Error(result.error || 'Unable to sign in.');
+      onSuccess(result.email);
     })
     .catch(error => notify(error.message))
     .finally(() => {
       button.disabled = false;
-      button.textContent = 'Verify and open PillCheck';
+      button.textContent = defaultLabel;
     });
-});
-document.querySelector('#gateBack').addEventListener('click', () => {
-  document.querySelector('#contactStep').hidden = false;
-  document.querySelector('#codeStep').hidden = true;
-  document.querySelector('#gateSubtitle').textContent = 'Sign in to continue to your private medication dashboard.';
+}
+document.querySelector('#gateLogin').addEventListener('click', () => {
+  const email = document.querySelector('#gateContact').value.trim();
+  const password = document.querySelector('#gatePassword').value;
+  login(email, password, document.querySelector('#gateLogin'), 'Sign in to PillCheck', setLoggedIn);
 });
 
 fetch('./drug-database.json')
@@ -275,6 +248,11 @@ function openScan() {
   document.body.style.overflow = 'hidden';
   startCamera();
 }
+function openScanMode(modeName) {
+  openScan();
+  const mode = document.querySelector(`.scan-mode[data-mode="${modeName}"]`);
+  mode?.click();
+}
 function closeScan() {
   modal.classList.remove('show');
   document.body.style.overflow = '';
@@ -282,6 +260,8 @@ function closeScan() {
 }
 
 document.querySelectorAll('#scanBtn, .scan-button').forEach(button => button.addEventListener('click', openScan));
+document.querySelector('#scanTabletBtn').addEventListener('click', () => openScanMode('pill'));
+document.querySelector('#scanPrescriptionBtn').addEventListener('click', () => openScanMode('prescription'));
 document.querySelector('#closeModal').addEventListener('click', closeScan);
 modal.addEventListener('click', event => { if (event.target === modal) closeScan(); });
 document.querySelectorAll('.scan-mode').forEach(mode => mode.addEventListener('click', () => {
@@ -400,13 +380,13 @@ const authModal = document.querySelector('#authModal');
 document.querySelector('#profileBtn').addEventListener('click', () => authModal.classList.add('show'));
 document.querySelector('#closeAuth').addEventListener('click', () => authModal.classList.remove('show'));
 authModal.addEventListener('click', event => { if (event.target === authModal) authModal.classList.remove('show'); });
-document.querySelector('#sendOtp').addEventListener('click', () => {
+document.querySelector('#sendPassword').addEventListener('click', () => {
   const contact = document.querySelector('#authContact').value.trim();
-  if (!contact) {
-    notify('Enter a phone number or email first.');
-    return;
-  }
-  notify(`Secure code sent to ${contact}.`);
+  const password = document.querySelector('#authPassword').value;
+  login(contact, password, document.querySelector('#sendPassword'), 'Sign in securely', email => {
+    setLoggedIn(email);
+    authModal.classList.remove('show');
+  });
 });
 document.querySelector('#startOnboarding').addEventListener('click', () => {
   document.querySelector('#authTitle').textContent = 'Set up your PillCheck profile';
@@ -414,7 +394,7 @@ document.querySelector('#startOnboarding').addEventListener('click', () => {
   document.querySelector('.auth-card .muted').textContent = 'Your preferences help us make reminders easier to hear, see, and follow.';
   document.querySelector('.auth-card label').firstChild.textContent = 'Your name';
   document.querySelector('#authContact').placeholder = 'e.g. Deepan Raju';
-  document.querySelector('#sendOtp').textContent = 'Continue setup';
+  document.querySelector('#sendPassword').textContent = 'Continue setup';
 });
 
 function fallbackAdvisorAnswer(question) {
